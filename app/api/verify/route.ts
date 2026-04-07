@@ -70,7 +70,7 @@ export async function POST(req: Request) {
   console.log("[verify] Sending to /api/decision:", JSON.stringify(requestBody));
 
   try {
-    const zorelanRes = await fetch("http://localhost:3000/api/decision", {
+    const zorelanRes = await fetch(`${process.env.ZORELAN_BASE_URL}/api/decision`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
