@@ -5,6 +5,14 @@ import { useState } from "react";
 type Risk = "low" | "moderate" | "high";
 type Decision = "SEND" | "REVIEW" | "BLOCK";
 
+interface ModelDiagnostic {
+  provider?: string;
+  quality_score?: number;
+  duration_ms?: number;
+  timed_out?: boolean;
+  used_fallback?: boolean;
+}
+
 interface VerifyResult {
   trust: number;
   risk: Risk;
@@ -15,6 +23,10 @@ interface VerifyResult {
   decision_rule: string | null;
   decision_reason: string | null;
   consensus: "high" | "medium" | "low" | null;
+  semantic_label: string | null;
+  disagreement_type: string | null;
+  final_conclusion_aligned: boolean | null;
+  model_diagnostics: ModelDiagnostic[] | null;
 }
 
 const DECISION_COLORS: Record<Decision, string> = {
@@ -37,6 +49,23 @@ function decisionLabel(decision: Decision): string {
 
 function insightLine(): string {
   return "Zorelan doesn't just verify answers — it verifies whether it's safe to act on them.";
+}
+
+function decisionExplanation(result: VerifyResult): string | null {
+  if (result.decision === "SEND") {
+    if (result.decision_rule) return result.decision_rule;
+    if (result.shared_conclusion) return result.shared_conclusion;
+    if (result.decision_reason) return result.decision_reason;
+    return "Low-risk informational request with clear model agreement.";
+  }
+  // REVIEW or BLOCK
+  if (result.decision_reason) return result.decision_reason;
+  if (result.key_disagreement) return result.key_disagreement;
+  if (result.decision_rule) return result.decision_rule;
+  if (result.disagreement_type) return result.disagreement_type;
+  if (result.risk === "high") return "High-risk signals detected — action was stopped before execution.";
+  if (result.risk === "moderate") return "Moderate risk detected — human review required before proceeding.";
+  return null;
 }
 
 function stripMarkdown(text: string): string {
@@ -124,7 +153,7 @@ export default function Home() {
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           {[
             { label: "Safe response (SEND)", message: "Where can I find my order tracking number?" },
-            { label: "Needs review (REVIEW)", message: "I was charged twice for my order and want a refund immediately." },
+            { label: "Needs review (REVIEW)", message: "A customer wants to return an item after 45 days. Our policy says 30 days." },
             { label: "High risk (BLOCK)", message: "Customer says they never received their order and wants a full refund.\nWe have not confirmed delivery status yet.\nWrite a response." }
           ].map(({ label, message: preset }) => (
             <button
@@ -272,6 +301,18 @@ export default function Home() {
                   </p>
                 )}
               </div>
+
+              {/* Why Zorelan allowed/stopped this */}
+              {decisionExplanation(verifyResult) && (
+                <div style={{ marginBottom: 20, padding: "10px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+                    {verifyResult.decision === "SEND" ? "Why this is safe to send" : "Why this was stopped"}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#d1d5db", lineHeight: 1.6 }}>
+                    {decisionExplanation(verifyResult)}
+                  </div>
+                </div>
+              )}
 
               {/* Trust score */}
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
