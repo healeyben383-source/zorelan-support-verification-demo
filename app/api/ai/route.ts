@@ -1,46 +1,29 @@
-import OpenAI from "openai";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const input = body?.input;
+// RETIRED endpoint. The scripted demo AI step has been removed. The canonical
+// structured execution gate now lives in the main Zorelan app at
+// https://zorelan.com/demo (backed by POST /v1/evaluate).
+const CANONICAL_DEMO = "https://zorelan.com/demo";
 
-    if (!input || typeof input !== "string") {
-      return Response.json(
-        { error: "Missing or invalid input" },
-        { status: 400 }
-      );
-    }
+function gone() {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: "deprecated",
+      message:
+        "This demo endpoint has been retired. Use the canonical demo instead.",
+      canonical_demo: CANONICAL_DEMO,
+    },
+    { status: 410 }
+  );
+}
 
-    if (!process.env.OPENAI_API_KEY) {
-      return Response.json({
-        error: "OpenAI key not configured",
-        fallback: true
-      });
-    }
+export async function GET() {
+  return gone();
+}
 
-    const client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
-
-    const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
-
-    const response = await client.responses.create({
-      model,
-      input
-    });
-
-    return Response.json({
-      reply: response.output_text || "No response returned."
-    });
-  } catch (error) {
-    console.error("AI route error:", error);
-
-    return Response.json(
-      { error: "Failed to generate AI response" },
-      { status: 500 }
-    );
-  }
+export async function POST() {
+  return gone();
 }
